@@ -31,7 +31,10 @@ ENV AGENT_BROWSER_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 
 # Install agent-browser and claude-code globally
-RUN npm install -g agent-browser @anthropic-ai/claude-code
+RUN npm install -g agent-browser @anthropic-ai/claude-code @googleworkspace/cli @overlay-one/google-tasks-mcp-server google-contacts-mcp google-drive-mcp-lib google-sheets-mcp @shivaduke28/google-docs-mcp yt-mcp google-maps-mcp-server @notionhq/notion-mcp-server @modelcontextprotocol/server-github @modelcontextprotocol/server-memory @softeria/ms-365-mcp-server@0.44.1
+
+# Disable keytar (native keyring) — container has no keyring daemon; token cache uses file paths instead
+RUN mv /usr/local/lib/node_modules/@softeria/ms-365-mcp-server/node_modules/keytar /usr/local/lib/node_modules/@softeria/ms-365-mcp-server/node_modules/keytar.disabled 2>/dev/null || true
 
 # Create app directory
 WORKDIR /app

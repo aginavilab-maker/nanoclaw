@@ -409,6 +409,18 @@ async function runQuery(
         'NotebookEdit',
         'mcp__nanoclaw__*',
         'mcp__gmail__*',
+        'mcp__calendar__*',
+        'mcp__tasks__*',
+        'mcp__contacts__*',
+        'mcp__drive__*',
+        'mcp__sheets__*',
+        'mcp__docs__*',
+        'mcp__youtube__*',
+        'mcp__maps__*',
+        'mcp__notion__*',
+        'mcp__github__*',
+        'mcp__memory__*',
+        'mcp__ms365__*',
       ],
       env: sdkEnv,
       permissionMode: 'bypassPermissions',
@@ -427,6 +439,76 @@ async function runQuery(
         gmail: {
           command: 'npx',
           args: ['-y', '@gongrzhe/server-gmail-autoauth-mcp'],
+        },
+        calendar: {
+          command: 'npx',
+          args: ['-y', '@gongrzhe/server-calendar-autoauth-mcp'],
+        },
+        tasks: {
+          command: 'sh',
+          args: ['-c', 'cd /home/node/.tasks-mcp && exec google-tasks-mcp-server'],
+        },
+        contacts: {
+          command: 'sh',
+          args: ['-c', 'exec /home/node/.contacts-mcp/start.sh'],
+        },
+        drive: {
+          command: 'sh',
+          args: ['-c', 'exec /home/node/.drive-mcp/start.sh'],
+        },
+        sheets: {
+          command: 'sh',
+          args: ['-c', 'exec /home/node/.sheets-mcp/start.sh'],
+        },
+        docs: {
+          command: 'google-docs-mcp',
+          args: [],
+          env: {
+            GOOGLE_OAUTH_CREDENTIALS: '/home/node/.docs-mcp/gcp-oauth.keys.json',
+            GOOGLE_OAUTH_TOKENS: '/home/node/.docs-mcp/tokens.json',
+            GOOGLE_MCP_CONFIG: '/home/node/.docs-mcp/config.json',
+          },
+        },
+        youtube: {
+          command: 'sh',
+          args: ['-c', 'exec /home/node/.youtube-mcp/start.sh'],
+        },
+        maps: {
+          command: 'sh',
+          args: ['-c', 'exec /home/node/.maps-mcp/start.sh'],
+        },
+        notion: {
+          command: 'notion-mcp-server',
+          args: [],
+          env: {
+            OPENAPI_MCP_HEADERS: JSON.stringify({
+              'Authorization': `Bearer ${fs.existsSync('/home/node/.notion-mcp/token') ? fs.readFileSync('/home/node/.notion-mcp/token', 'utf-8').trim() : ''}`,
+              'Notion-Version': '2022-06-28',
+            }),
+          },
+        },
+        github: {
+          command: 'mcp-server-github',
+          args: [],
+          env: {
+            GITHUB_PERSONAL_ACCESS_TOKEN: fs.existsSync('/home/node/.github-mcp/token') ? fs.readFileSync('/home/node/.github-mcp/token', 'utf-8').trim() : '',
+          },
+        },
+        memory: {
+          command: 'mcp-server-memory',
+          args: [],
+          env: {
+            MEMORY_FILE_PATH: '/home/node/.memory-mcp/memory.json',
+          },
+        },
+        ms365: {
+          command: 'ms-365-mcp-server',
+          args: [],
+          env: {
+            MS365_MCP_CACHE_DIR: '/home/node/.ms365-mcp',
+            MS365_MCP_TOKEN_CACHE_PATH: '/home/node/.ms365-mcp/token-cache.json',
+            MS365_MCP_SELECTED_ACCOUNT_PATH: '/home/node/.ms365-mcp/.selected-account.json',
+          },
         },
       },
       hooks: {
