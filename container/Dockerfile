@@ -36,6 +36,11 @@ RUN npm install -g agent-browser @anthropic-ai/claude-code @googleworkspace/cli 
 # Disable keytar (native keyring) — container has no keyring daemon; token cache uses file paths instead
 RUN mv /usr/local/lib/node_modules/@softeria/ms-365-mcp-server/node_modules/keytar /usr/local/lib/node_modules/@softeria/ms-365-mcp-server/node_modules/keytar.disabled 2>/dev/null || true
 
+# Install note-com-mcp (pre-built from host, with dependencies)
+COPY note-com-mcp/build/ /app/note-com-mcp/build/
+COPY note-com-mcp/package*.json /app/note-com-mcp/
+RUN cd /app/note-com-mcp && npm install --omit=dev && npx playwright install --with-deps chromium
+
 # Create app directory
 WORKDIR /app
 

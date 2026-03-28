@@ -392,6 +392,7 @@ async function runQuery(
   for await (const message of query({
     prompt: stream,
     options: {
+      model: process.env.CLAUDE_MODEL || undefined,
       cwd: '/workspace/group',
       additionalDirectories: extraDirs.length > 0 ? extraDirs : undefined,
       resume: sessionId,
@@ -421,6 +422,7 @@ async function runQuery(
         'mcp__github__*',
         'mcp__memory__*',
         'mcp__ms365__*',
+        'mcp__note__*',
       ],
       env: sdkEnv,
       permissionMode: 'bypassPermissions',
@@ -508,6 +510,15 @@ async function runQuery(
             MS365_MCP_CACHE_DIR: '/home/node/.ms365-mcp',
             MS365_MCP_TOKEN_CACHE_PATH: '/home/node/.ms365-mcp/token-cache.json',
             MS365_MCP_SELECTED_ACCOUNT_PATH: '/home/node/.ms365-mcp/.selected-account.json',
+          },
+        },
+        note: {
+          command: 'node',
+          args: ['/app/note-com-mcp/build/note-mcp-server.js'],
+          env: {
+            NOTE_EMAIL: process.env.NOTE_EMAIL || '',
+            NOTE_PASSWORD: process.env.NOTE_PASSWORD || '',
+            NOTE_USER_ID: process.env.NOTE_USER_ID || '',
           },
         },
       },

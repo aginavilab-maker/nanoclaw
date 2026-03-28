@@ -8,6 +8,7 @@ import os from 'os';
 import path from 'path';
 
 import {
+  CLAUDE_MODEL,
   CONTAINER_IMAGE,
   CONTAINER_MAX_OUTPUT_SIZE,
   CONTAINER_TIMEOUT,
@@ -175,6 +176,126 @@ function buildVolumeMounts(
     });
   }
 
+  // Google Calendar credentials directory (for Calendar MCP inside the container)
+  const calendarDir = path.join(homeDir, '.calendar-mcp');
+  if (fs.existsSync(calendarDir)) {
+    mounts.push({
+      hostPath: calendarDir,
+      containerPath: '/home/node/.calendar-mcp',
+      readonly: false, // MCP may need to refresh OAuth tokens
+    });
+  }
+
+  // Google Tasks credentials directory (for Tasks MCP inside the container)
+  const tasksDir = path.join(homeDir, '.tasks-mcp');
+  if (fs.existsSync(tasksDir)) {
+    mounts.push({
+      hostPath: tasksDir,
+      containerPath: '/home/node/.tasks-mcp',
+      readonly: false, // MCP may need to refresh OAuth tokens
+    });
+  }
+
+  // Google Contacts credentials directory (for Contacts MCP inside the container)
+  const contactsDir = path.join(homeDir, '.contacts-mcp');
+  if (fs.existsSync(contactsDir)) {
+    mounts.push({
+      hostPath: contactsDir,
+      containerPath: '/home/node/.contacts-mcp',
+      readonly: false,
+    });
+  }
+
+  // Google Drive credentials directory (for Drive MCP inside the container)
+  const driveDir = path.join(homeDir, '.drive-mcp');
+  if (fs.existsSync(driveDir)) {
+    mounts.push({
+      hostPath: driveDir,
+      containerPath: '/home/node/.drive-mcp',
+      readonly: false,
+    });
+  }
+
+  // Google Sheets credentials directory
+  const sheetsDir = path.join(homeDir, '.sheets-mcp');
+  if (fs.existsSync(sheetsDir)) {
+    mounts.push({
+      hostPath: sheetsDir,
+      containerPath: '/home/node/.sheets-mcp',
+      readonly: false,
+    });
+  }
+
+  // Google Docs credentials directory
+  const docsDir = path.join(homeDir, '.docs-mcp');
+  if (fs.existsSync(docsDir)) {
+    mounts.push({
+      hostPath: docsDir,
+      containerPath: '/home/node/.docs-mcp',
+      readonly: false,
+    });
+  }
+
+  // YouTube API key directory
+  const youtubeDir = path.join(homeDir, '.youtube-mcp');
+  if (fs.existsSync(youtubeDir)) {
+    mounts.push({
+      hostPath: youtubeDir,
+      containerPath: '/home/node/.youtube-mcp',
+      readonly: true,
+    });
+  }
+
+  // Google Maps API key directory
+  const mapsDir = path.join(homeDir, '.maps-mcp');
+  if (fs.existsSync(mapsDir)) {
+    mounts.push({
+      hostPath: mapsDir,
+      containerPath: '/home/node/.maps-mcp',
+      readonly: true,
+    });
+  }
+
+  // Notion API token directory
+  const notionDir = path.join(homeDir, '.notion-mcp');
+  if (fs.existsSync(notionDir)) {
+    mounts.push({
+      hostPath: notionDir,
+      containerPath: '/home/node/.notion-mcp',
+      readonly: true,
+    });
+  }
+
+  // GitHub API token directory
+  const githubDir = path.join(homeDir, '.github-mcp');
+  if (fs.existsSync(githubDir)) {
+    mounts.push({
+      hostPath: githubDir,
+      containerPath: '/home/node/.github-mcp',
+      readonly: true,
+    });
+  }
+
+  // Memory MCP persistent data directory
+  const memoryDir = path.join(homeDir, '.memory-mcp');
+  if (fs.existsSync(memoryDir)) {
+    mounts.push({
+      hostPath: memoryDir,
+      containerPath: '/home/node/.memory-mcp',
+      readonly: false,
+    });
+  }
+
+  // Microsoft 365 MCP token cache directory
+  const ms365Dir = path.join(homeDir, '.ms365-mcp');
+  if (fs.existsSync(ms365Dir)) {
+    mounts.push({
+      hostPath: ms365Dir,
+      containerPath: '/home/node/.ms365-mcp',
+      readonly: false, // MCP needs to store/refresh device code auth tokens
+    });
+  }
+
   // Per-group IPC namespace: each group gets its own IPC directory
   // This prevents cross-group privilege escalation via IPC
   const groupIpcDir = resolveGroupIpcPath(group.folder);
@@ -202,7 +323,7 @@ function buildVolumeMounts(
     group.folder,
     'agent-runner-src',
   );
-  if (!fs.existsSync(groupAgentRunnerDir) && fs.existsSync(agentRunnerSrc)) {
+  if (fs.existsSync(agentRunnerSrc)) {
     fs.cpSync(agentRunnerSrc, groupAgentRunnerDir, { recursive: true });
   }
   mounts.push({
@@ -261,6 +382,18 @@ function buildContainerArgs(
   if (hostUid != null && hostUid !== 0 && hostUid !== 1000) {
     args.push('--user', `${hostUid}:${hostGid}`);
     args.push('-e', 'HOME=/home/node');
+  }
+
+  // Pass Claude model override to container (configurable via .env)
+  if (CLAUDE_MODEL) {
+    args.push('-e', `CLAUDE_MODEL=${CLAUDE_MODEL}`);
+  }
+
+  // Pass note.com credentials to container (values may be empty until configured)
+  for (const envVar of ['NOTE_EMAIL', 'NOTE_PASSWORD', 'NOTE_USER_ID']) {
+    if (process.env[envVar]) {
+      args.push('-e', `${envVar}=${process.env[envVar]}`);
+    }
   }
 
   for (const mount of mounts) {
