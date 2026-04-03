@@ -3,8 +3,8 @@
 
 // discord
 
-// gmail
-import './gmail.js';
+// gmail (disabled — Google AI Plus cancelled, OAuth token revoked)
+// import './gmail.js';
 
 // slack
 import './slack.js';

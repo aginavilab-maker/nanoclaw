@@ -219,6 +219,55 @@ Claude Codeに聞いてください。「スケジューラーが動いていな
 
 これにより、基本システムを最小限に保ち、すべてのユーザーが不要な機能を継承することなく、自分のインストールをカスタマイズできます。
 
+## 開発・修正方法
+
+開発の詳細は [DEVELOPMENT.md](DEVELOPMENT.md) を参照してください。
+
+### 基本的な開発フロー
+
+```bash
+# 開発モード（ホットリロード付き）
+npm run dev
+
+# ビルド & 起動
+npm run build && npm run start
+
+# テスト実行
+npm run test
+```
+
+### よくある修正パターン
+
+**トリガーワードの変更:**
+`.env` の `ASSISTANT_NAME` を編集するか、`src/config.ts` を直接修正。
+
+**チャネルの有効化/無効化:**
+`src/channels/index.ts` で該当チャネルのimportを追加/コメントアウト。
+
+**コンテナ内エージェントの動作変更:**
+`container/skills/` 内のファイルを編集後、`./container/build.sh` でイメージを再ビルド。
+
+**スケジュールタスクの確認・管理:**
+メインチャネルから `@Andy スケジュールタスク一覧` と送信、または直接SQLiteを確認：
+```bash
+sqlite3 data/messages.db "SELECT id, prompt, schedule_value, status FROM scheduled_tasks;"
+```
+
+**サービスの再起動（Linux）:**
+```bash
+systemctl --user restart nanoclaw
+```
+
+### ログの確認
+
+```bash
+# systemdのログ
+journalctl --user -u nanoclaw -f
+
+# デバッグレベルで起動
+LOG_LEVEL=debug npm run dev
+```
+
 ## コミュニティ
 
 質問やアイデアは？[Discordに参加](https://discord.gg/VDdww8qS42)してください。

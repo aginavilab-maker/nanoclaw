@@ -104,6 +104,24 @@ Or run `/customize` for guided changes.
 
 The codebase is small enough that Claude can safely modify it.
 
+## Development
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for the full development guide (in Japanese).
+
+```bash
+npm run dev          # Run with hot reload
+npm run build        # Compile TypeScript
+npm run test         # Run tests
+./container/build.sh # Rebuild agent container
+```
+
+**Common modifications:**
+- Trigger word: set `ASSISTANT_NAME` in `.env` or edit `src/config.ts`
+- Enable/disable channels: add/remove imports in `src/channels/index.ts`
+- Container agent behavior: edit files in `container/skills/`, then rebuild with `./container/build.sh`
+- Service restart (Linux): `systemctl --user restart nanoclaw`
+- Logs: `journalctl --user -u nanoclaw -f` or `LOG_LEVEL=debug npm run dev`
+
 ## Contributing
 
 **Don't add features. Add skills.**
