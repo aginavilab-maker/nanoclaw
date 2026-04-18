@@ -206,14 +206,14 @@ PY
 |---|---|
 | ainews | `task-1774596632748-ainews` |
 | ghtrend | `task-1774596632748-ghtrend` |
+| weekly | `task-1774596632748-weekly` |
 | ldyq11 | `task-1774667756106-ldyq11` |
-| weekly | （別 ID、必要時に DB 参照）|
 
-実行後 60 秒以内にログへ `Running scheduled task / taskId: ...` が出て、2-4 分で Slack 投稿まで完了する。
+実行後 60 秒以内にログへ `Running scheduled task / taskId: ...` が出て、2-4 分で Slack 投稿まで完了する。JSON ブロックを書く分、従来より出力長が 3 倍前後に増えるので完了まで 6-8 分かかることもある。
 
 ## 収集タスクのプロンプト変更
 
-`ainews` / `ghtrend` / `ldyq11` の収集ルール本体は `prompts/ainews.txt` / `ghtrend.txt` / `ldyq11.txt` にテキスト保管し、DB の `scheduled_tasks.prompt` 列に反映する。
+4 タスク（`ainews` / `ghtrend` / `weekly` / `ldyq11`）の収集ルール本体は `prompts/ainews.txt` / `ghtrend.txt` / `weekly.txt` / `ldyq11.txt` にテキスト保管し、DB の `scheduled_tasks.prompt` 列に反映する。
 
 変更手順:
 
@@ -237,6 +237,39 @@ PY
    ```
 3. 手動発火（前節の方法）でテスト → `#ai-agents` の投稿を目視確認
 4. `prompts/*.txt` も Git コミット対象に含める
+
+## ダッシュボード連携と JSON データ契約
+
+NanoClaw の 4 つの定期タスクは、ノート PC 側で稼働する「AI News Dashboard」との連携のため、Slack 投稿末尾に **`json` コードブロック**を 1 個付与する（schema v1.0、2026-04-18 改訂版）。仕様詳細は `agent.md` の「機械可読データ出力仕様」節、または `handoff.md` を参照。
+
+**重要な変更点 (2026-04-18 夕刻改訂)**:
+- `report_type` → 廃止、全タスクで `source: "ai-agents"` 固定に統一
+- `summary_ja` → `summary` にリネーム、3-5 行に拡張
+- `is_report` / `published_at` → 廃止
+- `source_url` → `report_url` にリネーム
+- `sentiment` (positive/negative/neutral) 追加
+- `region` 候補に `kr`, `in` 追加
+- URL 3 鉄則（エビデンス重視）と日本語 summary 必須化
+
+### 投稿後の JSON ブロック確認方法
+
+```bash
+# 直近の ainews 投稿の末尾を確認（Slack MCP や投稿リンク経由で）
+# DB 側から見るには last_result に内部メモのみ格納されるので、実体確認は Slack で行う
+```
+
+Slack の `#ai-agents` チャンネルを開き、NanoClaw の最新投稿をスクロールすると末尾に畳まれた JSON コードブロックが見える。展開すると schema v1.0 構造の JSON が入っている。
+
+### 引き継ぎドキュメント
+
+ノート PC 側でダッシュボードの開発を継続する Cowork セッションには `handoff.md` に情報を集約してある。
+
+- 現在の実装ステータス
+- JSON パース時の既知の注意点（URL 自動ラップ、null 残存）
+- 検証済み / 未検証の report_type
+- Slack / Git / プロンプトへのポインタ
+
+新しい Cowork セッション（ノート PC 側）を開いたら、まず `handoff.md` を読むことを推奨。
 
 ## 定期メンテナンス
 
