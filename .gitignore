@@ -39,3 +39,6 @@ nanoclaw.log
 .nanoclaw/
 
 agents-sdk-docs
+
+# prompt backups (session-local)
+backups/

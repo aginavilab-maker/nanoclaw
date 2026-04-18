@@ -1,6 +1,6 @@
 # NanoClaw 仕様 (agent.md)
 
-最終更新: 2026-04-17
+最終更新: 2026-04-18
 
 ## 概要
 
@@ -43,12 +43,34 @@ Windows ミニ PC (NucBoxG3_Plus)
 データ実体: `/home/nano/nanoclaw/store/messages.db` (SQLite) の `scheduled_tasks` テーブル
 登録方法: Slack で `@NanoClaw 毎朝X時に〇〇して` と発話すると DB に INSERT される（ファイル直編集ではない）
 
-| タスク名 | 発火時刻 (JST) | 内容 |
-|---|---|---|
-| ainews | 毎日 6 / 9 / 12 / 15 / 18 / 21 時 (3 時間おき) | AI ニュース収集 → `#ai-agents` 投稿 |
-| ghtrend | 毎日 07:00 | GitHub トレンド投稿 |
-| ldyq11 | 毎日 09:00 | 朝の収集状況レポート |
-| weekly | 毎週月曜 08:00 | 週次ダイジェスト |
+| タスク名 | 発火時刻 (JST) | 内容 | 採用期間（2026-04-18 追加） |
+|---|---|---|---|
+| ainews | 毎日 6 / 9 / 12 / 15 / 18 / 21 時 (3 時間おき) | AI ニュース収集 → `#ai-agents` 投稿 | 重要度 4-5: 直近 72h / 重要度 1-3: 直近 24h |
+| ghtrend | 毎日 07:00 | GitHub トレンド投稿 | 直近 7 日以内に活動ある repo / 直近 24h 急上昇は ⭐ |
+| ldyq11 | 毎日 09:00 | 朝の収集状況レポート | 直近 24h（本日分のみ） |
+| weekly | 毎週月曜 08:00 | 週次ダイジェスト | （既存、未変更） |
+
+## 収集タスクの期間フィルタ仕様（2026-04-18 導入）
+
+`ainews` / `ghtrend` / `ldyq11` の 3 タスクは、古い記事や活動のない repo がレポートに混ざる問題を解消するため、プロンプト内に「採用期間ウィンドウ」を明示している。
+
+共通ルール:
+
+- 各記事 / repo には発表日（公開日）または最終コミット日 (YYYY-MM-DD) を必須項目として含める
+- 日付が判別不能なものは採用しない
+- 採用期間外のものは出力に含めない（ドロップ）
+- 最終レポート末尾に「採用 N 件 / 期間外ドロップ M 件」を明記する（検証可能性）
+- 実行時刻は `date '+%Y-%m-%d %H:%M JST'` の実シェル結果を使う（cron 予定時刻を引っ張らない）
+
+各タスクのウィンドウ定義:
+
+| タスク | 採用ウィンドウ |
+|---|---|
+| ainews | 重要度 4-5 → 宣言した実行日の 3 日前 00:00 JST 以降 / 重要度 1-3 → 1 日前 00:00 JST 以降 |
+| ghtrend | 宣言した実行日の 7 日前 00:00 JST 以降 / うち 1 日前以降に動きがある repo は ⭐ マーク |
+| ldyq11 | 宣言した実行日の 1 日前 00:00 JST 以降（固定 24h） |
+
+プロンプト本体は `prompts/ainews.txt` / `prompts/ghtrend.txt` / `prompts/ldyq11.txt` に保管し、DB の `scheduled_tasks.prompt` 列に反映する運用（readme.md 参照）。
 
 ## Slack 連携
 
@@ -105,3 +127,5 @@ Windows ミニ PC (NucBoxG3_Plus)
 - `systemctl status nanoclaw` (system-level) は "Unit not found" になる → **必ず `systemctl --user status nanoclaw`**
 - `setup/service.ts` を root で実行すると system-level unit が作られるが `User=` 指定がないため `HOME=/root` になり `.env` が見えず失敗 → **通常ユーザー (`nano`) で実行が正解**
 - `/etc/wsl.conf` にかつて `command=service nanoclaw start` が書かれていたが、対応する init.d スクリプトは存在せず空振りだった。2026-04-17 に削除済み
+- **IPC (`/home/nano/nanoclaw/data/ipc/`) は outbound Slack 投稿のブリッジ専用**。ワーカーコンテナ → ホスト Node.js → Slack への片方向チャネルであり、任意の JSON ファイルを置いても task-scheduler は拾わない。Slack Bot が「IPC トリガーファイルを書きました」と応答しても、`@NanoClaw タスクを今すぐ実行して` のメンション経由では実際にスケジュールタスクは再発火しない（ハルシネーション応答）。手動発火は DB の `scheduled_tasks.next_run` を過去時刻に UPDATE する方法（readme.md 参照）で行う。
+- `sqlite3` CLI は WSL にデフォルト未インストール。DB 参照 / 更新は Python の `sqlite3` モジュール経由で行う（`apt install` を要求しない）。

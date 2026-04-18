@@ -1,6 +1,6 @@
 # NanoClaw 運用ガイド (readme.md)
 
-最終更新: 2026-04-17
+最終更新: 2026-04-18
 
 ## これは何
 
@@ -177,7 +177,66 @@ Slack で NanoClaw に話しかける形で登録・変更が可能:
 @NanoClaw 登録されているスケジュールを全部教えて
 ```
 
-DB を直接編集する運用は避ける。
+DB を直接編集する運用は避ける（プロンプト本文の変更を除く、後述）。
+
+### 注意: Slack Bot のハルシネーションに注意
+
+`@NanoClaw タスクを今すぐ実行して` のようなメンションに対して Bot が「**IPC トリガーファイルを書きました。`/workspace/ipc/.../run-xxx.json` を作成済みです**」等と応答することがあるが、これは Bot の**ハルシネーション**。`IPC Watcher` は outbound Slack 投稿用のブリッジで、任意パスの JSON を task trigger として拾う機能は**存在しない**。手動発火は次節の DB 更新方式を使う。
+
+## 手動発火（今すぐ実行）
+
+定期タスクを任意のタイミングで 1 回だけ走らせたい場合、`scheduled_tasks.next_run` を過去時刻に UPDATE すれば task-scheduler（60 秒ポーリング）が next poll 時に due と判定して発火する。発火後、`next_run` は cron 式から次の予定時刻へ自動再計算される。
+
+```bash
+# 例: ainews を今すぐ 1 回実行
+cd /home/nano/nanoclaw && python3 <<'PY'
+import sqlite3, datetime
+con = sqlite3.connect("store/messages.db")
+new_next_run = (datetime.datetime.now(datetime.UTC) - datetime.timedelta(minutes=1)).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+con.execute("UPDATE scheduled_tasks SET next_run=? WHERE id='task-1774596632748-ainews'", (new_next_run,))
+con.commit()
+print(f"ainews: next_run -> {new_next_run}  (fires within 60s)")
+con.close()
+PY
+```
+
+タスク ID 参照表:
+
+| タスク | ID |
+|---|---|
+| ainews | `task-1774596632748-ainews` |
+| ghtrend | `task-1774596632748-ghtrend` |
+| ldyq11 | `task-1774667756106-ldyq11` |
+| weekly | （別 ID、必要時に DB 参照）|
+
+実行後 60 秒以内にログへ `Running scheduled task / taskId: ...` が出て、2-4 分で Slack 投稿まで完了する。
+
+## 収集タスクのプロンプト変更
+
+`ainews` / `ghtrend` / `ldyq11` の収集ルール本体は `prompts/ainews.txt` / `ghtrend.txt` / `ldyq11.txt` にテキスト保管し、DB の `scheduled_tasks.prompt` 列に反映する。
+
+変更手順:
+
+1. `prompts/<task>.txt` を編集（期間ウィンドウ・キーワード・フォーマット等）
+2. バックアップして DB へ UPDATE:
+
+   ```bash
+   cd /home/nano/nanoclaw && python3 <<'PY'
+   import sqlite3, pathlib, datetime
+   TID = "task-1774596632748-ainews"  # ← 対象タスクの ID
+   SRC = pathlib.Path("/mnt/c/Users/G3 Plus2/Documents/NanoClaw/NanoClaw/prompts/ainews.txt")
+   new_prompt = SRC.read_text(encoding="utf-8")
+   con = sqlite3.connect("store/messages.db")
+   old = con.execute("SELECT prompt FROM scheduled_tasks WHERE id=?", (TID,)).fetchone()
+   ts = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+   pathlib.Path(f"backups/{TID}-{ts}.txt").write_text(old[0], encoding="utf-8")
+   con.execute("UPDATE scheduled_tasks SET prompt=? WHERE id=?", (new_prompt, TID))
+   con.commit(); con.close()
+   print("updated")
+   PY
+   ```
+3. 手動発火（前節の方法）でテスト → `#ai-agents` の投稿を目視確認
+4. `prompts/*.txt` も Git コミット対象に含める
 
 ## 定期メンテナンス
 
